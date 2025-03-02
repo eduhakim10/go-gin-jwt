@@ -36,12 +36,12 @@ func SignUp(c *gin.Context) {
 	//UserReq := new(request.UserRequest)
 
 	var body struct {
-		Nama     string
+		Name     string
 		Email    string
 		Password string
 	}
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed cuy"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed format body wrong"})
 
 		return
 	}
@@ -49,7 +49,7 @@ func SignUp(c *gin.Context) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed cuy"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Hash Password Error"})
 	}
 	hashedPasswordString := string(hashedPassword)
 
@@ -57,22 +57,31 @@ func SignUp(c *gin.Context) {
 	// return
 	//create User
 	user := new(models.User)
-	user.Nama = &body.Nama
+	user.Name = &body.Name
 	user.Email = &body.Email
 	user.Password = &hashedPasswordString
 
-	errDb := initializers.DB.Table("users").Create(&user).Error
+	//errDb := initializers.DB.Table("users").Create(&user).Error
+	errDb := initializers.DB.Create(&user).Error
+
 	if errDb != nil {
 
 		c.JSON(500, gin.H{
-			"Message": "Cant Create data",
+			"status": "false",
+			"message": "Cant Create data",
 		})
 
 		return
 
 	}
 	c.JSON(200, gin.H{
-		"Message": "Data saved",
+		"status": "success",
+        "message": "Registration successful",
+		"user": gin.H{
+            "id":    user.ID,
+            "name":  user.Name,
+            "email": user.Email,
+        },
 	})
 
 }
@@ -100,14 +109,14 @@ func SignIn(c *gin.Context) {
 		if result.Error == gorm.ErrRecordNotFound {
 			//	fmt.Println("Email does not exist!")
 			c.JSON(500, gin.H{
-				"Message": "Email not found",
+				"message": "Email not found",
 			})
 			return
 			// Handle case when the email doesn't exist
 		} else {
 			//log.Fatal(result.Error)
 			c.JSON(500, gin.H{
-				"Message": "Hushno",
+				"message": "Hash no work",
 			})
 		}
 	}
@@ -128,12 +137,25 @@ func SignIn(c *gin.Context) {
 	if err != nil {
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		c.JSON(200, gin.H{
-			"Message": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
+	// Update last_login
+	user.LastLogin = time.Now()
+	initializers.DB.Save(&user)
+
 	c.JSON(200, gin.H{
 		"token": tokenString,
+		"user": gin.H{
+		"id":    *user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+			"level":  user.Level, // Jika ada role
+			"Name_level":user.Name_level,
+
+		},
+		"expires_in": 3600, // Misal token berlaku 1 jam
 	})
 
 }
@@ -278,7 +300,7 @@ func Store(c *gin.Context) {
 
 	// //	fmt.Println("connect cuy")
 	user := new(models.User)
-	user.Nama = &UserReq.Nama
+	user.Name = &UserReq.Nama
 	user.Email = &UserReq.Email
 	user.Password = &UserReq.Password
 
@@ -321,7 +343,7 @@ func Update(c *gin.Context) {
 		return
 	}
 
-	user.Nama = &requestBody.Nama
+	user.Name = &requestBody.Nama
 	user.Email = &requestBody.Email
 
 	if err := initializers.DB.Model(&User{}).Where("id = ?", ID).Updates(map[string]interface{}{"nama": requestBody.Nama, "email": requestBody.Email}).Error; err != nil {
@@ -394,7 +416,7 @@ func ChangePassword(c *gin.Context) {
 	// return
 	//create User
 
-	//user.Nama = &requestBody.Nama
+	//user.Name = &requestBody.Nama
 	//user.Password = NewhashedPasswordString
 
 	if err := initializers.DB.Model(&User{}).Where("id = ?", body.ID).Updates(map[string]interface{}{"password": NewhashedPasswordString}).Error; err != nil {

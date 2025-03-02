@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"log"
-
+	"time"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -49,6 +49,9 @@ func NowDB() {
 		fmt.Println("connect cuy")
 	}
 	DB = database
-	//database.AutoMigrate(&models.User)
+	
+
+	// Set time di Go ke Jakarta
+	time.Local = time.FixedZone("WIB", 7*60*60)
 
 }
